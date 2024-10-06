@@ -1,5 +1,5 @@
 "use client";
-import { useState, Fragment } from "react";
+import { Fragment } from "react";
 import { Menu, MenuButton, MenuItems, MenuItem, Transition } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { mapSortBy, SortByOptions } from "../lib/helper";
@@ -16,7 +16,7 @@ function classNames(...classes: string[]) {
 
 export default function DropdownMenu(props: Props) {
   const { selected, setSelected } = props;
- 
+
 
   return (
     <Menu as="div" className="relative inline-block text-left">

@@ -1,20 +1,15 @@
-// app/api/readCsv/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 import csv from 'csv-parser';
-
-interface IFile {
-  createdAt: string;
-  filename: string;
-} 
+import fs from 'fs';
+import { NextRequest, NextResponse } from 'next/server';
+import path from 'path';
+import { CSVFile } from '../../interfaces/file';
 
 export async function GET(req: NextRequest) {
   try {
     const filePath = path.resolve(process.cwd(), 'src/public/data.csv');
-    
+
     // Read and parse the CSV file asynchronously
-    let data = await parseCsvFile(filePath);
+    const parsedData = await parseCsvFile(filePath);
 
     // Get query params
     const { searchParams } = new URL(req.url);
@@ -22,15 +17,15 @@ export async function GET(req: NextRequest) {
 
     // Sort the data based on query params
     if (sortBy === 'createdAt_asc') {
-      data.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      parsedData.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     } else if (sortBy === 'filename_asc') {
-      data.sort((a, b) => sortByFilename(a.filename, b.filename));
+      parsedData.sort((a, b) => sortByFilename(a.filename, b.filename));
     } else if (sortBy === 'filename_desc') {
-      data.sort((a, b) => sortByFilename(b.filename, a.filename));
+      parsedData.sort((a, b) => sortByFilename(b.filename, a.filename));
     }
 
     // Return the sorted data as JSON
-    return NextResponse.json({ data });
+    return NextResponse.json({ data: parsedData });
 
   } catch (error) {
     console.error('Error reading CSV file:', error);
@@ -38,14 +33,14 @@ export async function GET(req: NextRequest) {
   }
 }
 
-async function parseCsvFile(filePath: string): Promise<IFile[]> {
+async function parseCsvFile(filePath: string): Promise<CSVFile[]> {
   return new Promise((resolve, reject) => {
-    const results: IFile[] = [];
+    const results: CSVFile[] = [];
 
     fs.createReadStream(filePath)
-      .pipe(csv())
+      .pipe(csv({ headers: false }))
       .on('data', (data) => {
-        const val: string = (Object.values(data)[0] as string) || '';
+        const [val] = Object.values(data) as string[]
         const [createdAt, filename] = val.split(';');
         results.push({ createdAt, filename });
       })
@@ -54,31 +49,7 @@ async function parseCsvFile(filePath: string): Promise<IFile[]> {
   });
 }
 
-
-// Optimized natural sorting function for filenames
-function sortByFilename(a: string, b: string): number {
-  const aParts = a.match(/(\d+|\D+)/g); // Split by digits or non-digits
-  const bParts = b.match(/(\d+|\D+)/g); // Split by digits or non-digits
-
-  if (!aParts || !bParts) return a.localeCompare(b); // Fallback for malformed data
-
-  const len = Math.min(aParts.length, bParts.length);
-
-  for (let i = 0; i < len; i++) {
-    const aPart = aParts[i];
-    const bPart = bParts[i];
-
-    const aNum = parseInt(aPart, 10);
-    const bNum = parseInt(bPart, 10);
-
-    if (!isNaN(aNum) && !isNaN(bNum)) {
-      if (aNum !== bNum) return aNum - bNum; 
-    } else {
-      const comparison = aPart.localeCompare(bPart);
-      if (comparison !== 0) return comparison;
-    }
-  }
-
-  // If all parts are equal, fallback to length comparison
-  return aParts.length - bParts.length;
-}
+// Helper function for filename sort, treating numbers inside strings as numbers
+const sortByFilename = (a: string, b: string) => {
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+};
