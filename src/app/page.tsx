@@ -25,7 +25,6 @@ export default function Home() {
 
   }, [sortBy])
 
-  // prod and stage env on vercel
   useEffect(() => {
     fetchData();
   }, [fetchData, sortBy]);
